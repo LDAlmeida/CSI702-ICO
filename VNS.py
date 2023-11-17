@@ -84,7 +84,7 @@ def vns(knapsack, max_iterations, r):
             perturbed_solution = random.choice(generate_neighbours(current_solution, knapsack))
             perturbed_solution = local_search(perturbed_solution, knapsack)
 
-            if calculate_total_value(perturbed_solution) < calculate_total_value(current_solution):
+            if calculate_total_value(perturbed_solution) > calculate_total_value(current_solution):
                 current_solution = perturbed_solution
                 k = 1
             else:
