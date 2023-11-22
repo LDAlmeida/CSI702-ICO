@@ -95,7 +95,7 @@ def simulated_annealing(knapsack, initial_solution, initial_temperature, cooling
 
 # Exemplo de uso
 if __name__ == "__main__":
-    items = [(2, 4), (2, 5), (3, 7), (4,9), (4,6)]  # Exemplo de itens (valor, peso)
+    items = [(2, 4), (2, 5), (3, 7), (4,9), (4,6), (10,4), (20,20), (4,1), (20,10),(10,7), (8,50), (9,20), (12,17)] # Exemplo de itens (valor, peso)
     capacity = 23  # Capacidade da mochila
     knapsack = KnapsackProblem(items, capacity) #cria o problema
 

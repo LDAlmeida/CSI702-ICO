@@ -96,6 +96,7 @@ def acceptance_criterion(current_solution, perturbed_solution):
 
 def ils(knapsack, max_iterations):
     current_solution = greedy_construct(knapsack, 1)
+    print(f"Greed: {current_solution} {calculate_total_value(current_solution)}")
     current_solution = local_search(current_solution, knapsack)
 
     iteration = 0
@@ -110,7 +111,7 @@ def ils(knapsack, max_iterations):
     return current_solution
 
 if __name__ == "__main__":
-    items = [(2, 4), (2, 5), (3, 7), (4, 9), (4, 6)]
+    items = [(2, 4), (2, 5), (3, 7), (4,9), (4,6), (10,4), (20,20), (4,1), (20,10),(10,7), (8,50), (9,20), (12,17)] # Exemplo de itens (valor, peso)
     capacity = 23
     knapsack = KnapsackProblem(items, capacity)
 

@@ -89,6 +89,7 @@ def GRASP(grasp_max,knapsack):
         print("Greedy:", solution, calculate_total_value(solution), "Iter:", x)
         current_solution = local_search(solution,knapsack)
         current_solution_value = calculate_total_value(current_solution)
+        print(f"Current Sol.: {current_solution} {current_solution_value}")
         
         if current_solution_value > best_solution_value:
             best_solution = current_solution
@@ -98,7 +99,7 @@ def GRASP(grasp_max,knapsack):
 
 # Exemplo de uso
 if __name__ == "__main__":
-    items = [(2, 4), (2, 5), (3, 7), (4,9), (4,6)]  # Exemplo de itens (valor, peso)
+    items = [(2, 4), (2, 5), (3, 7), (4,9), (4,6), (10,4), (20,20), (4,1), (20,10),(10,7), (8,50), (9,20), (12,17)] # Exemplo de itens (valor, peso)
     capacity = 23  # Capacidade da mochila
     knapsack = KnapsackProblem(items, capacity) #cria o problema
 
