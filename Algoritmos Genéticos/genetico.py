@@ -197,8 +197,14 @@ def clear_bit(number, position):
 
          
 if __name__ == "__main__":
-    items = [(2, 4), (2, 5), (3, 7), (4,9), (4,6), (10,4), (20,20), (4,1), (20,10),(10,7), (8,50), (9,20), (12,17)] # Exemplo de itens (valor, peso)
-    capacity = 40
+    items = [
+    (2, 4), (2, 5), (3, 7), (4, 9), (4, 6), (10, 4), (20, 20), (4, 1), (20, 10),
+    (10, 7), (8, 50), (9, 20), (12, 17),
+    #itens adicionais
+    (15, 8), (6, 12), (18, 15), (7, 3), (5, 10),
+    (14, 2), (3, 18), (9, 6), (12, 8), (11, 5)
+]
+    capacity = 100
     knapsack = KnapsackProblem(items, capacity)
     chromossome_size = len(items)
     max_pop_size = chromossome_size*chromossome_size
@@ -211,4 +217,4 @@ if __name__ == "__main__":
     for guy in sorted_population:
         if guy.aptitude != 0:
             print(guy)
-            print(knapsack.calculate_total_value(guy))
+            print(f'Value: {knapsack.calculate_total_value(guy)}')
