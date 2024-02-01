@@ -16,9 +16,11 @@ class TravelingSalesmanProblem:
         for i in range(self.num_cities):
             for j in range(self.num_cities):  # Fix: iterate over the range of self.num_cities
                 if i != j:
-                    distance = random.randint(1, 100)  # Adjust the range as needed
+                    distance = random.randint(1, 10)  # Adjust the range as needed
                     cities_matrix[i][j] = distance
                     cities_matrix[j][i] = distance
+
+        self.cities_matrix = cities_matrix
 
         return cities_matrix
 
@@ -34,14 +36,15 @@ class TravelingSalesmanProblem:
         population = []
 
         for _ in range(pop_size):
-            # Generate a random route (vector of cities)
-            route = self.Route(list(range(self.num_cities)), self)
-            random.shuffle(route.route)  # Shuffle to avoid duplicates
+            # Generate a random route (vector of cities) with a random size
+            route_size = random.randint(2, self.num_cities)  # Ensure at least 2 cities
+            route = self.Route(random.sample(range(self.num_cities), route_size), self)
+            route.route.append(route.route[0])
             # Add the route to the population
             population.append(route)
 
         self.routes = population
-        
+
         return population
 
     class Route:
@@ -49,6 +52,7 @@ class TravelingSalesmanProblem:
             self.route = route
             self.total_distance = 0
             self.TSProblem = TSProblem
+            self.aptitude = 0
             self.calculate_total_value()
             
         def calculate_total_value(self):
@@ -66,6 +70,9 @@ class TravelingSalesmanProblem:
             self.total_distance = total_value
             return total_value
         
+        def __str__(self):
+            return f'Rota : {self.route} \n Distancia total: {self.total_distance} \n Aptitude: {self.aptitude}'
+
 class GeneticAlgorythm:
     
     def __init__(self, pop_size, chromo_size, crossover_perc, mutation_perc):
@@ -91,13 +98,14 @@ class GeneticAlgorythm:
         # Create a new route using the child_route
         child = TravelingSalesmanProblem.Route(child_route, parent1.TSProblem)
 
-        return child
+        return [child]
     
     @staticmethod
     def mutation_generic(route):
         # Swap two elements in the route vector in place
-        idx1, idx2 = random.sample(range(len(route)), 2)
-        route[idx1], route[idx2] = route[idx2], route[idx1]
+        idx1, idx2 = random.sample(range(len(route.route)), 2)
+        route.route[idx1], route.route[idx2] = route.route[idx2], route.route[idx1]
+
         
     @staticmethod    
     def parent_selection(style, population):
@@ -154,7 +162,7 @@ class GeneticAlgorythm:
             if random.random() <= self.mutation_perc:
                 for parent in parents:
                     parents.remove(parent)
-                    parents.append(parent.mutate())
+                    parents.append(self.mutation_generic(parent))
 
             for parent in parents:
                 problem.routes.append(parent)
@@ -172,13 +180,16 @@ class GeneticAlgorythm:
    
     
 if __name__ == "__main__":
-    TSproblem = TravelingSalesmanProblem(num_cities=100, capacity=50)
-    TSproblem.generate_population(pop_size=1000)
+    TSproblem = TravelingSalesmanProblem(num_cities=13, capacity=50)
+    TSproblem.generate_population(pop_size=100)
 
-    resulting_population = GeneticAlgorythm(pop_size=len(TSproblem.routes), chromo_size=0, crossover_perc=0.8, mutation_perc=0.1)
+    genetic_algorythm = GeneticAlgorythm(pop_size=len(TSproblem.routes), chromo_size=0, crossover_perc=0.8, mutation_perc=0.1)
+    resulting_population = genetic_algorythm.apply(TSproblem,100)
 
     sorted_population = sorted(resulting_population.routes, key=lambda x: TSproblem.calculate_aptitude(x), reverse=True)
+    
     for route in sorted_population:
+        route.aptitude = TSproblem.calculate_aptitude(route)
         if route.aptitude != 0:
             print(route)
             print(f'Value: {TSproblem.calculate_aptitude(route)}')
