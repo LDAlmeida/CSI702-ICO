@@ -1,4 +1,6 @@
 import random
+import matplotlib.pyplot as plt
+import numpy as np
 
 class TravelingSalesmanProblem:
     def __init__(self, num_cities, capacity):
@@ -9,24 +11,18 @@ class TravelingSalesmanProblem:
         self.generate_cities_matrix()
         
     def generate_cities_matrix(self):
-        # Initialize an empty matrix
         cities_matrix = [[0 for _ in range(self.num_cities)] for _ in range(self.num_cities)]
-
-        # Populate the matrix with random distances (symmetric)
         for i in range(self.num_cities):
-            for j in range(self.num_cities):  # Fix: iterate over the range of self.num_cities
+            for j in range(self.num_cities):
                 if i != j:
-                    distance = random.randint(1, 10)  # Adjust the range as needed
+                    distance = random.randint(1, 10)
                     cities_matrix[i][j] = distance
                     cities_matrix[j][i] = distance
-
         self.cities_matrix = cities_matrix
-
         return cities_matrix
 
     def calculate_aptitude(self, route):
         aptitude = route.total_distance/self.capacity
-        
         if aptitude > 1:
             return 0
         else:
@@ -34,17 +30,14 @@ class TravelingSalesmanProblem:
 
     def generate_population(self, pop_size):
         population = []
-
         for _ in range(pop_size):
-            # Generate a random route (vector of cities) with a random size
-            route_size = random.randint(2, self.num_cities)  # Ensure at least 2 cities
-            route = self.Route(random.sample(range(self.num_cities), route_size), self)
-            route.route.append(route.route[0])
-            # Add the route to the population
-            population.append(route)
-
+            route_size = random.randint(2, self.num_cities - 1)
+            start_city = random.randint(0, self.num_cities - 1)
+            route = [start_city] + random.sample([city for city in range(self.num_cities) if city != start_city], route_size - 1)
+            route.append(start_city)
+            new_route = self.Route(route, self)
+            population.append(new_route)
         self.routes = population
-
         return population
 
     class Route:
@@ -58,20 +51,37 @@ class TravelingSalesmanProblem:
         def calculate_total_value(self):
             total_value = 0
             num_cities = len(self.route)
-
             for i in range(num_cities):
-                # Use modulo to wrap around the indices
                 current_city_index = i % num_cities
                 next_city_index = (i + 1) % num_cities
-
                 distance = self.TSProblem.cities_matrix[self.route[current_city_index]][self.route[next_city_index]]
                 total_value += distance
-
             self.total_distance = total_value
             return total_value
         
         def __str__(self):
             return f'Rota : {self.route} \n Distancia total: {self.total_distance} \n Aptitude: {self.aptitude}'
+    
+    @staticmethod
+    def visualize_top_routes(routes, cities_coordinates):
+        # Plot all cities
+        for city, coord in enumerate(cities_coordinates):
+            plt.scatter(*coord, c='black')
+            plt.text(coord[0], coord[1], str(city))
+
+        # Colors for the routes
+        colors = ['blue', 'green', 'red', 'cyan', 'magenta']
+        
+        for idx, route in enumerate(routes):
+            x = [cities_coordinates[city][0] for city in route]
+            y = [cities_coordinates[city][1] for city in route]
+            plt.plot(x, y, c=colors[idx % len(colors)], label=f'Route {idx + 1}')
+
+        plt.title('Top 5 TSP Routes')
+        plt.xlabel('X Coordinate')
+        plt.ylabel('Y Coordinate')
+        plt.legend()
+        plt.show()
 
 class GeneticAlgorythm:
     
@@ -84,36 +94,32 @@ class GeneticAlgorythm:
     @staticmethod
     def crossover_OX(parent1, parent2):
         num_cities = len(parent1.route)
-        start, end = sorted(random.sample(range(num_cities), 2))
-
-        # Create a copy of the parents
-        child_route = parent1.route[:]
-
-        # Fill the gap with cities from the second parent
-        for city in parent2.route:
-            if city not in child_route[start:end]:
-                child_route[start] = city
-                start = (start + 1) % num_cities
-
-        # Create a new route using the child_route
-        child = TravelingSalesmanProblem.Route(child_route, parent1.TSProblem)
-
+        if num_cities > 4:
+            start, end = sorted(random.sample(range(1, num_cities - 1), 2))
+            child_route = parent1.route[:-1]
+            fill_positions = list(range(start, end)) + list(range(end, num_cities - 1)) + list(range(1, start))
+            for position in fill_positions:
+                if child_route[position] not in parent2.route[start:end] and position not in range(start, end):
+                    for city in parent2.route:
+                        if city not in child_route:
+                            child_route[position] = city
+                            break
+            child_route.append(child_route[0])
+            child = TravelingSalesmanProblem.Route(child_route, parent1.TSProblem)
+        else:
+            child = random.choice([parent1,parent2])
         return [child]
-    
+
     @staticmethod
     def mutation_generic(route):
-        # Swap two elements in the route vector in place
-        idx1, idx2 = random.sample(range(len(route.route)), 2)
+        idx1, idx2 = random.sample(range(1, len(route.route) - 1), 2)
         route.route[idx1], route.route[idx2] = route.route[idx2], route.route[idx1]
-
+        return route
         
     @staticmethod    
     def parent_selection(style, population):
         parents = []
-        print('Selecting parents, may the odds be in your favor!')
-
         if style == "Championship":
-            print('Championship begins.')
             while len(parents) < 2:
                 parent_contestant1 = random.choice(population)
                 parent_contestant2 = random.choice(population)
@@ -121,28 +127,24 @@ class GeneticAlgorythm:
                     parents.append(parent_contestant2)
                 else:
                     parents.append(parent_contestant1)
-                print(f'{parents[len(parents)-1]} wins the round!')
-
         elif style == "Roulette":
-            parents = random.choices(population, k=2)
-            print(f'Roulette style winners are:')
-            for parent in parents:
-                print(parent)
-
+            total_aptitude = sum(route.aptitude for route in population)
+            weights = [route.aptitude / total_aptitude if total_aptitude > 0 else 1 / len(population) for route in population]
+            first_parent = random.choices(population, weights, k=1)[0]
+            if total_aptitude > 0:
+                adjusted_weights = [w if route != first_parent else 0 for route, w in zip(population, weights)]
+                total_adjusted_weights = sum(adjusted_weights)
+                adjusted_weights = [w / total_adjusted_weights for w in adjusted_weights]
+            else:
+                adjusted_weights = [1 / (len(population) - 1) if route != first_parent else 0 for route in population]
+            second_parent = random.choices(population, adjusted_weights, k=1)[0]
+            parents = [first_parent, second_parent]
         elif style == "Elitist":
             sorted_population = sorted(population, key=lambda x: x.aptitude, reverse=True)
             parents = sorted_population[:2]
-            print(f'Elitist winners are:')
-            for parent in parents:
-                print(parent)
-
         elif style == "Random":
             parents.append(random.choice(population))
             parents.append(random.choice(population))
-            print(f'The lucky random style winners are:')
-            for parent in parents:
-                print(parent)
-
         return parents
        
     def calculate_avg_aptitude(self, population):
@@ -151,45 +153,41 @@ class GeneticAlgorythm:
         return avg_aptitude   
         
     def apply(self, problem, max_iterations):       
-        # entrar num loop que sao as geracoes daquele algoritmo genetico ate que atenda. O criterio de parada pode ser numero de geracoes
         for i in range(max_iterations):
             parents = self.parent_selection("Championship",problem.routes)
-            # aplicar um operador de crossover com os dois selecionados
             if random.random() <= self.crossover_perc:
                 cross_parents = self.crossover_OX(parents[0], parents[1])
                 parents = cross_parents
-
             if random.random() <= self.mutation_perc:
                 for parent in parents:
-                    parents.remove(parent)
-                    parents.append(self.mutation_generic(parent))
-
+                    if len(parent.route) > 4:
+                        parents.remove(parent)
+                        parents.append(self.mutation_generic(parent))
             for parent in parents:
                 problem.routes.append(parent)
-                
             parents_to_remove = self.parent_selection("Roulette",problem.routes)
             for parent in parents_to_remove:
                 try:
                     problem.routes.remove(parent)
                 except Exception as e:
-                    print(f"Removing failed: {e}" )
-                    
+                    print(f"Removing failed: {e}")
         avg_aptitude = self.calculate_avg_aptitude(problem.routes)
         print(f"Average aptitude in generation {i}: {avg_aptitude}")
         return problem
-   
-    
+
 if __name__ == "__main__":
     TSproblem = TravelingSalesmanProblem(num_cities=13, capacity=50)
     TSproblem.generate_population(pop_size=100)
-
     genetic_algorythm = GeneticAlgorythm(pop_size=len(TSproblem.routes), chromo_size=0, crossover_perc=0.8, mutation_perc=0.1)
     resulting_population = genetic_algorythm.apply(TSproblem,100)
-
-    sorted_population = sorted(resulting_population.routes, key=lambda x: TSproblem.calculate_aptitude(x), reverse=True)
+    sorted_routes = sorted(resulting_population.routes, key=lambda x: TSproblem.calculate_aptitude(x), reverse=True)
     
-    for route in sorted_population:
-        route.aptitude = TSproblem.calculate_aptitude(route)
-        if route.aptitude != 0:
-            print(route)
-            print(f'Value: {TSproblem.calculate_aptitude(route)}')
+    # Select top 5 routes
+    top_routes = [route.route for route in sorted_routes[:5]]
+
+    # Assuming city coordinates are known or generated here
+    np.random.seed(42)  # For reproducible results
+    cities_coordinates = [tuple(coord) for coord in np.random.rand(TSproblem.num_cities, 2) * 100]
+
+    # Visualize the top 5 routes
+    TSproblem.visualize_top_routes(top_routes, cities_coordinates)
