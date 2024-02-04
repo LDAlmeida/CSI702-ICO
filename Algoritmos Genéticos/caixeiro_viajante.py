@@ -21,13 +21,6 @@ class TravelingSalesmanProblem:
         self.cities_matrix = cities_matrix
         return cities_matrix
 
-    def calculate_aptitude(self, route):
-        aptitude = route.total_distance/self.capacity
-        if aptitude > 1:
-            return 0
-        else:
-            return aptitude
-
     def generate_population(self, pop_size):
         population = []
         for _ in range(pop_size):
@@ -47,41 +40,68 @@ class TravelingSalesmanProblem:
             self.TSProblem = TSProblem
             self.aptitude = 0
             self.calculate_total_value()
-            
+            self.calculate_aptitude()  # This now directly updates self.aptitude
+
         def calculate_total_value(self):
             total_value = 0
             num_cities = len(self.route)
-            for i in range(num_cities):
-                current_city_index = i % num_cities
-                next_city_index = (i + 1) % num_cities
-                distance = self.TSProblem.cities_matrix[self.route[current_city_index]][self.route[next_city_index]]
+            for i in range(num_cities - 1):  # Adjusted loop to avoid index out of range
+                distance = self.TSProblem.cities_matrix[self.route[i]][self.route[i+1]]
                 total_value += distance
             self.total_distance = total_value
-            return total_value
-        
+
+        def calculate_aptitude(self):
+            aptitude = self.total_distance / self.TSProblem.capacity
+            if aptitude > 1:
+                self.aptitude = 0
+            else:
+                self.aptitude = aptitude
+
         def __str__(self):
             return f'Rota : {self.route} \n Distancia total: {self.total_distance} \n Aptitude: {self.aptitude}'
     
-    @staticmethod
-    def visualize_top_routes(routes, cities_coordinates):
-        # Plot all cities
-        for city, coord in enumerate(cities_coordinates):
-            plt.scatter(*coord, c='black')
-            plt.text(coord[0], coord[1], str(city))
+    def visualize_top_routes(self, all_routes, top_routes, cities_coordinates):
+        plt.figure(figsize=(12, 8))
 
-        # Colors for the routes
-        colors = ['blue', 'green', 'red', 'cyan', 'magenta']
+        # Plot all routes with less emphasis
+        for route_obj in all_routes:
+            if route_obj.route not in top_routes:
+                # If the route is not among the top routes, plot it with light gray
+                self.plot_route_with_distances(route_obj.route, cities_coordinates, is_top_route=False, color='lightgray')
+
+        # Colors for the top routes
+        top_colors = ['black', 'green', 'purple', 'brown', 'red']
         
-        for idx, route in enumerate(routes):
-            x = [cities_coordinates[city][0] for city in route]
-            y = [cities_coordinates[city][1] for city in route]
-            plt.plot(x, y, c=colors[idx % len(colors)], label=f'Route {idx + 1}')
+        # Highlight and label the top 5 routes with unique colors
+        for idx, route in enumerate(top_routes):
+            self.plot_route_with_distances(route, cities_coordinates, is_top_route=True, color=top_colors[idx % len(top_colors)])
 
-        plt.title('Top 5 TSP Routes')
+        # Plot city nodes
+        for idx, coord in enumerate(cities_coordinates):
+            plt.scatter(coord[0], coord[1], c='red', zorder=5)  # Make cities stand out
+            plt.text(coord[0], coord[1], f'City {idx}', fontsize=9, ha='center', va='center')
+
+        plt.title('TSP Routes Visualization: All Routes with Top 5 Highlighted')
         plt.xlabel('X Coordinate')
         plt.ylabel('Y Coordinate')
-        plt.legend()
+        plt.legend(handles=[plt.Line2D([0], [0], color=c, linewidth=2) for c in top_colors], labels=[f'Top {i+1} Route' for i in range(len(top_colors))])
         plt.show()
+
+    def plot_route_with_distances(self, route, cities_coordinates, is_top_route, color):
+        linewidth = 2 if is_top_route else 1
+
+        for i in range(len(route) - 1):
+            start_city = route[i]
+            end_city = route[i + 1]
+            x = [cities_coordinates[start_city][0], cities_coordinates[end_city][0]]
+            y = [cities_coordinates[start_city][1], cities_coordinates[end_city][1]]
+
+            plt.plot(x, y, color=color, linewidth=linewidth)
+            if is_top_route:
+                # Show distance for top routes
+                distance = self.cities_matrix[start_city][end_city]
+                mid_point = ((x[0] + x[1]) / 2, (y[0] + y[1]) / 2)
+                plt.text(mid_point[0], mid_point[1], f'{distance}', color='black', fontsize=8, ha='center', va='center', bbox=dict(facecolor='white', alpha=0.5))
 
 class GeneticAlgorythm:
     
@@ -142,13 +162,18 @@ class GeneticAlgorythm:
         elif style == "Elitist":
             sorted_population = sorted(population, key=lambda x: x.aptitude, reverse=True)
             parents = sorted_population[:2]
+        
+        elif style == "Reverse Elitist":
+            sorted_population = sorted(population, key=lambda x: x.aptitude, reverse=False)
+            parents = sorted_population[:2]
+
         elif style == "Random":
             parents.append(random.choice(population))
             parents.append(random.choice(population))
         return parents
        
     def calculate_avg_aptitude(self, population):
-        total_aptitude = sum(route.TSProblem.calculate_aptitude(route) for route in population)
+        total_aptitude = sum(route.aptitude for route in population)
         avg_aptitude = total_aptitude / len(population) if len(population) > 0 else 0
         return avg_aptitude   
         
@@ -165,22 +190,22 @@ class GeneticAlgorythm:
                         parents.append(self.mutation_generic(parent))
             for parent in parents:
                 problem.routes.append(parent)
-            parents_to_remove = self.parent_selection("Roulette",problem.routes)
+            parents_to_remove = self.parent_selection("Reverse Elitist",problem.routes)
             for parent in parents_to_remove:
                 try:
                     problem.routes.remove(parent)
                 except Exception as e:
                     print(f"Removing failed: {e}")
-        avg_aptitude = self.calculate_avg_aptitude(problem.routes)
-        print(f"Average aptitude in generation {i}: {avg_aptitude}")
+            avg_aptitude = self.calculate_avg_aptitude(problem.routes)
+            print(f"Average aptitude in generation {i}: {avg_aptitude}")
         return problem
 
 if __name__ == "__main__":
-    TSproblem = TravelingSalesmanProblem(num_cities=13, capacity=50)
+    TSproblem = TravelingSalesmanProblem(num_cities=10, capacity=50)
     TSproblem.generate_population(pop_size=100)
     genetic_algorythm = GeneticAlgorythm(pop_size=len(TSproblem.routes), chromo_size=0, crossover_perc=0.8, mutation_perc=0.1)
     resulting_population = genetic_algorythm.apply(TSproblem,100)
-    sorted_routes = sorted(resulting_population.routes, key=lambda x: TSproblem.calculate_aptitude(x), reverse=True)
+    sorted_routes = sorted(resulting_population.routes, key=lambda x: x.aptitude, reverse=True)
     
     # Select top 5 routes
     top_routes = [route.route for route in sorted_routes[:5]]
@@ -189,5 +214,7 @@ if __name__ == "__main__":
     np.random.seed(42)  # For reproducible results
     cities_coordinates = [tuple(coord) for coord in np.random.rand(TSproblem.num_cities, 2) * 100]
 
-    # Visualize the top 5 routes
-    TSproblem.visualize_top_routes(top_routes, cities_coordinates)
+    for route in sorted_routes[:5]:
+        print(route)
+        
+    TSproblem.visualize_top_routes(sorted_routes, top_routes, cities_coordinates)
